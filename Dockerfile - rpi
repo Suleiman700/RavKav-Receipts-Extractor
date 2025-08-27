@@ -1,0 +1,42 @@
+FROM node:18-bullseye
+
+# Skip Chromium download by Puppeteer
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD true
+
+# Install Chromium and required fonts/libs
+RUN apt-get update && apt-get install -y \
+    chromium \
+    fonts-liberation \
+    libappindicator3-1 \
+    libasound2 \
+    libatk-bridge2.0-0 \
+    libnspr4 \
+    libnss3 \
+    libxss1 \
+    libxtst6 \
+    xdg-utils \
+    --no-install-recommends && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Set the working directory
+WORKDIR /usr/src/app
+
+# Install dependencies
+COPY package*.json ./
+RUN npm install
+
+# Copy the rest of your app
+COPY . .
+
+# Puppeteer launch config expects this path
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+
+# Expose your app port
+EXPOSE 8083
+
+# Start app
+CMD ["node", "server.js"]
+
+
+# docker build -t mercantile-bank-scraper .
+# docker run -d -p 8083:8083 --name mercantile-bank-scraper mercantile-bank-scraper
