@@ -3,13 +3,19 @@ export class Session {
     sessionId = null;
     email = null;
     password = null;
-    otp = null;
+    verification_code = null;
     loginStatuses = {
         'NO': 'NO',
         'WAITING_OTP': 'WAITING_OTP',
         'YES': 'YES'
     };
     loginStatus = null; // NO, WAITING_OTP, YES
+    loginResult = {
+        state: null,
+        access_token: null,
+        refresh_token: null,
+        errors: [],
+    };
 
     /**
      * Create a new session
@@ -41,12 +47,12 @@ export class Session {
         return this.password;
     }
 
-    setOtp(otp) {
-        this.otp = otp;
+    setVerificationCode(verification_code) {
+        this.verification_code = verification_code;
         return {state: true}
     }
-    getOtp() {
-        return this.otp;
+    getVerificationCode() {
+        return this.verification_code;
     }
 
     setLoginStatus(loginStatus) {
@@ -70,5 +76,13 @@ export class Session {
     }
     getIsLogged() {
         return this.isLogged;
+    }
+
+    setLoginResult(loginResult) {
+        this.loginResult = loginResult;
+        return {state: true}
+    }
+    getLoginResult() {
+        return this.loginResult;
     }
 }

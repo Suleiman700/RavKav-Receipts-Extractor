@@ -2,6 +2,8 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const { Session } = require('./Session.js');
+const { RavKav } = require('./RavKav');
+
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -14,18 +16,28 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// Login endpoint
-app.post('/login', (req, res) => {
+/**
+ * Login endpoint
+ *
+ * When doing login and receive "verification_required", an email with otp is sent to your email.
+ * Send the same request with the verification_code param to complete the login.
+ *
+ * Required params:
+ *   - email: string
+ *   - password: string
+ *   - verification_code: number (optional)
+ */
+app.post('/login', async (req, res) => {
     try {
-        const { email, password } = req.body;
-        
+        const {email, password, verification_code} = req.body;
+
         // Validate required fields
         if (!email || !password) {
             return res.status(400).json({
                 errors: ['Email and password are required']
             });
         }
-        
+
         // Validate email format
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email)) {
@@ -33,23 +45,65 @@ app.post('/login', (req, res) => {
                 errors: ['Invalid email format']
             });
         }
-        
+
         // Create new session with credentials
-        const Session = new Session({ email, password });
-        Session.setLoginStatus(Session.loginStatuses.NO);
+        const session = new Session({email, password});
+        session.setLoginStatus(session.loginStatuses.NO);
+
+        // Save session to map
+        sessions.set(session.sessionId, session);
+
+        if (verification_code) {
+            session.setVerificationCode(verification_code);
+        }
+
+        const RavKavIns = new RavKav();
+        const loginResult = await RavKavIns.login(session);
+        console.log('loginResult', loginResult)
+        session.setLoginResult(loginResult);
 
         res.status(200).json({
-            // message: 'Login successful',
-            sessionId: Session.sessionId
+            sessionId: session.sessionId,
+            loginResult: session.getLoginResult(),
         });
-        
-    }
-    catch (error) {
-        console.error('Login error:', error);
+
+    } catch (error) {
+        console.log('error', error)
+        // console.error('Login error:', error);
         res.status(500).json({
             errors: ['Internal server error']
         });
     }
+});
+
+/**
+ * Get transactions endpoint
+ *
+ * Required params:
+ *  - sessionId: string - The session ID returned from the login endpoint
+ */
+app.post('/get-transactions', async (req, res) => {
+    const sessionId = req.body.sessionId;
+    if (!sessionId) {
+        return res.status(400).json({
+            errors: ['Session ID is required']
+        });
+    }
+    const session = sessions.get(sessionId);
+    if (!session) {
+        return res.status(400).json({
+            errors: ['Session not found']
+        });
+    }
+
+    const RavKavIns = new RavKav();
+    const transactions = await RavKavIns.getTransactions(session);
+
+    res.status(200).json({
+        status: 'OK',
+        data: transactions,
+        timestamp: new Date().toISOString()
+    });
 });
 
 // Set OTP endpoint
