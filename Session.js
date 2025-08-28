@@ -31,6 +31,14 @@ export class Session {
         this.loginStatus = this.loginStatuses.NO;
     }
 
+    setSessionId(sessionId) {
+        this.sessionId = sessionId;
+        return {state: true}
+    }
+    getSessionId() {
+        return this.sessionId;
+    }
+
     setEmail(email) {
         this.email = email;
         return {state: true}

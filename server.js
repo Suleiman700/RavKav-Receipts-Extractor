@@ -7,6 +7,7 @@ const { RavKav } = require('./RavKav');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const DEBUG = true;
 
 // Store active sessions (in production, use a proper session store like Redis)
 const sessions = new Map();
@@ -28,6 +29,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
  *   - verification_code: number (optional)
  */
 app.post('/login', async (req, res) => {
+    if (DEBUG) console.log('API: login', req.body);
     try {
         const {email, password, verification_code} = req.body;
 
@@ -59,7 +61,7 @@ app.post('/login', async (req, res) => {
 
         const RavKavIns = new RavKav();
         const loginResult = await RavKavIns.login(session);
-        console.log('loginResult', loginResult)
+        // console.log('loginResult', loginResult)
         session.setLoginResult(loginResult);
 
         res.status(200).json({
@@ -67,7 +69,8 @@ app.post('/login', async (req, res) => {
             loginResult: session.getLoginResult(),
         });
 
-    } catch (error) {
+    }
+    catch (error) {
         console.log('error', error)
         // console.error('Login error:', error);
         res.status(500).json({
@@ -81,14 +84,23 @@ app.post('/login', async (req, res) => {
  *
  * Required params:
  *  - sessionId: string - The session ID returned from the login endpoint
+ *
+ *  Available params:
+ *  - startDate: string - The start date for the transactions - E.g. 2025-01-01
+ *  - endDate: string - The end date for the transactions - E.g. 2025-01-31
+ *  - returnFormat: string - The format of the response - E.g. json, pdf, excel
  */
 app.post('/get-transactions', async (req, res) => {
-    const sessionId = req.body.sessionId;
+    if (DEBUG) console.log('API: get-transactions', req.body);
+    let {sessionId, startDate, endDate, returnFormat} = req.body;
+
+    // Check if sessionId is provided
     if (!sessionId) {
         return res.status(400).json({
             errors: ['Session ID is required']
         });
     }
+
     const session = sessions.get(sessionId);
     if (!session) {
         return res.status(400).json({
@@ -96,72 +108,45 @@ app.post('/get-transactions', async (req, res) => {
         });
     }
 
+    // Set default returnFormat to json if not provided
+    if (!returnFormat) {
+        returnFormat = 'json';
+    }
+
+    // Validate dates format
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (startDate && !dateRegex.test(startDate)) {
+        return res.status(400).json({
+            errors: ['Invalid start date format, expected format: YYYY-MM-DD']
+        })
+    }
+    if (endDate && !dateRegex.test(endDate)) {
+        return res.status(400).json({
+            errors: ['Invalid end date format, expected format: YYYY-MM-DD']
+        })
+    }
+    if (startDate && endDate && startDate > endDate) {
+        return res.status(400).json({
+            errors: ['Start date must be before end date']
+        })
+    }
+
+    // validate returnFormat
+    const allowedReturnFormats = ['json', 'pdf', 'excel'];
+    if (returnFormat && !allowedReturnFormats.includes(returnFormat)) {
+        return res.status(400).json({
+            errors: [`Invalid return format, Please use: ${allowedReturnFormats.join(', ')}`]
+        });
+    }
+
     const RavKavIns = new RavKav();
-    const transactions = await RavKavIns.getTransactions(session);
+    const transactions = await RavKavIns.getTransactions(session, {startDate, endDate});
 
     res.status(200).json({
         status: 'OK',
         data: transactions,
         timestamp: new Date().toISOString()
     });
-});
-
-// Set OTP endpoint
-app.post('/set-otp', (req, res) => {
-    try {
-        const { otp, sessionId } = req.body;
-        
-        // Validate required fields
-        if (!otp) {
-            return res.status(400).json({
-                errors: ['OTP code is required']
-            });
-        }
-        
-        if (!sessionId) {
-            return res.status(400).json({
-                errors: ['Session ID is required']
-            });
-        }
-        
-        // Validate OTP format (assuming it should be numeric and 6 digits)
-        if (!/^\d{6}$/.test(otp)) {
-            return res.status(400).json({
-                errors: ['OTP must be a 6-digit number']
-            });
-        }
-        
-        // Get session
-        const session = sessions.get(sessionId);
-        if (!session) {
-            return res.status(400).json({
-                errors: ['Invalid session ID']
-            });
-        }
-        
-        // Check if user is logged in
-        if (!session.getIsLogged()) {
-            return res.status(400).json({
-                errors: ['User must be logged in first']
-            });
-        }
-        
-        // Set OTP in session
-        session.setOtp(otp);
-        
-        // TODO: Add your OTP verification logic here
-        // For now, this is a placeholder that accepts any valid 6-digit OTP
-        
-        res.status(200).json({
-            message: 'OTP set successfully'
-        });
-        
-    } catch (error) {
-        console.error('Set OTP error:', error);
-        res.status(500).json({
-            errors: ['Internal server error']
-        });
-    }
 });
 
 // Health check endpoint

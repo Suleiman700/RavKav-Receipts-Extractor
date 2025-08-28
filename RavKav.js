@@ -41,17 +41,19 @@ export class RavKav {
 
         const loginResult = await axios.request(config)
             .then((res) => {
-                console.log('res.data', res.data)
+                session.setLoginResult(session.loginStatuses.YES)
                 response.state = true;
                 response.data = res.data;
                 response.errors = [];
             })
             .catch(async (error) => {
+                session.setLoginResult(session.loginStatuses.NO)
                 response.state = false;
                 response.errors.push(error);
                 console.log('error.response.data', error.response.data)
 
                 if (error.response.data.detail == 'verification_required') {
+                    session.setLoginResult(session.loginStatuses.WAITING_OTP)
                     const sendVerificationCodeResult = await this.sendVerificationCode(session);
                     console.log('sendVerificationCodeResult', sendVerificationCodeResult)
                     if (sendVerificationCodeResult.state) {
@@ -61,9 +63,14 @@ export class RavKav {
                     }
                     else {
                         response.state = false;
-                        response.data = ['verification_required']
+                        response.data = []
                         response.errors = sendVerificationCodeResult.errors;
                     }
+                }
+                else if (error.response.data.detail) {
+                    response.state = false;
+                    response.data = ['verification_required']
+                    response.errors = error.response.data.detail;
                 }
             });
 
@@ -120,12 +127,20 @@ export class RavKav {
         return response;
     }
 
-    async getTransactions(session) {
-        console.log('session.loginResult.access_token', session.loginResult.data.access_token);
+    async getTransactions(session, options = {startDate: null, endDate: null}) {
+        let url = 'https://ravkavonline.co.il/api/transaction/?billing_status=charged&page_size=1000';
+        
+        // Add date parameters if provided
+        if (options.startDate && options.endDate) {
+            const startDateStr = options.startDate;
+            const endDateStr = options.endDate;
+            url += `&created_since=${startDateStr}&created_until=${endDateStr}`;
+        }
+
         let config = {
             method: 'get',
             maxBodyLength: Infinity,
-            url: 'https://ravkavonline.co.il/api/transaction/?billing_status=charged&page_size=50',
+            url: url,
             headers: {
                 'accept': '*/*',
                 'accept-language': 'he',
@@ -159,6 +174,13 @@ export class RavKav {
             .catch((error) => {
                 response.state = false;
                 response.errors.push(error);
+
+                if (error.response.data.detail) {
+                    response.state = false;
+                    response.data = []
+                    response.errors = [error.response.data.detail];
+                }
+
             });
 
         return response;
