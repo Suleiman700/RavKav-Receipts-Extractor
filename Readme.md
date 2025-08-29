@@ -4,6 +4,8 @@ A Node.js API for logging into RavKav Online, fetching transactions, and exporti
 
 This project supports generating PDF and Excel files for transactions and can return them as binary files or Base64.
 
+<img src="thumbnail.png" alt="drawing" width="400"/>
+
 ---
 
 ## Features
