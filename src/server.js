@@ -22,6 +22,20 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
+// Function to remove expired sessions (older than 1 day)
+function cleanupExpiredSessions() {
+    const now = new Date();
+    for (const [sessionId, session] of sessions) {
+        const ageMs = now - session.created_at; // difference in milliseconds
+        const oneDayMs = 24 * 60 * 60 * 1000; // 1 day in milliseconds
+        if (ageMs > oneDayMs) {
+            console.log(`[DEBUG] Deleting expired session: ${sessionId}`);
+            sessions.delete(sessionId);
+        }
+    }
+}
+
+
 /**
  * Login endpoint
  *
@@ -35,6 +49,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
  */
 app.post('/login', async (req, res) => {
     if (DEBUG) console.log('API: login', req.body);
+    cleanupExpiredSessions();
     try {
         const {email, password, verification_code} = req.body;
 

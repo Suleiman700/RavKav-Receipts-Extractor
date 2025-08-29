@@ -1,6 +1,7 @@
 
 export class Session {
     sessionId = null;
+    created_at = null;
     email = null;
     password = null;
     verification_code = null;
@@ -29,6 +30,7 @@ export class Session {
         this.email = email;
         this.password = password;
         this.loginStatus = this.loginStatuses.NO;
+        this.created_at = new Date();
     }
 
     setSessionId(sessionId) {
