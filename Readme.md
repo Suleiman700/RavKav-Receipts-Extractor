@@ -1,256 +1,135 @@
-# Mercantile Bank Data Scraper
+# RavKav Receipts Extractor
 
-A Node.js application that scrapes banking data from Mercantile Bank using Puppeteer and Chrome. The application provides a REST API endpoint to retrieve account information, balances, loans, and debit authorizations.
+A Node.js API for logging into RavKav Online, fetching transactions, and exporting them as JSON, PDF, or Excel files.
 
-## Features
-
-- 🏦 Scrapes comprehensive bank account data
-- 🔐 Secure login with user credentials
-- 📊 Retrieves account details, balances, loans, and debit authorizations
-- 🐳 Dockerized for easy deployment
-- 🌐 REST API interface
-- 💾 Option to save data to file or return in response
-
-## Prerequisites
-
-- Docker installed on your system
-- Valid Mercantile Bank credentials (ID, password, and security code)
-
-## Before you start
-
-This project has 2 Dockerfile:
-1. Dockerfile - normal (for non-Raspberry Pi devices)
-2. Dockerfile - rpi (for Raspberry Pi devices)
-
-Make sure to rename the wanted docker file to `Dockerfile`, And also in the `Scraper.js` file, make sure to change the launch options to the wanted one.:
-```javascript
-  const launchOptions = {
-      // normal
-      headless: true,
-      defaultViewport: null,
-      args: ['--no-sandbox'],
-      // rpi4
-      // headless: true,
-      // defaultViewport: null,
-      // executablePath: '/usr/bin/chromium',
-      // args: ['--no-sandbox', '--disable-setuid-sandbox'],
-  };
-```
-
-## Quick Start
-
-### 1. Build the Docker Image
-
-```bash
-# Build the image
-docker build -t mercantile-bank-scraper .
-```
-
-### 2. Run the Container
-
-```bash
-# Run the container with a name and port mapping
-docker run -d -p 8083:8083 --name mercantile-bank-scraper mercantile-bank-scraper
-```
-
-The application will be available at `http://localhost:8083`
-
-### 3. Make API Requests
-
-Send a POST request to the `/api/scrape` endpoint with your credentials:
-
-**Endpoint:** `POST http://localhost:8083/api/scrape`
-
-**Request Body (JSON):**
-```json
-{
-    "id": "your_bank_id",
-    "password": "your_password",
-    "code": "your_security_code",
-    "mode": "json"
-}
-```
-
-**Example using curl:**
-```bash
-curl -X POST http://localhost:8083/api/scrape \
-  -H "Content-Type: application/json" \
-  -d '{
-    "id": "123456789",
-    "password": "your_password",
-    "code": "1234",
-    "mode": "json"
-  }'
-```
-
-## API Parameters
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `id` | string | Yes | Your bank ID/username |
-| `password` | string | Yes | Your bank password |
-| `code` | string | Yes | Your security code |
-| `mode` | string | No | Response mode: `"json"` (default) or `"save"` |
-
-## Response Modes
-
-### JSON Mode (default)
-Returns the scraped data directly in the API response:
-
-```json
-{
-  "success": true,
-  "data": {
-    "userAccounts": { ... },
-    "accountDetails": { ... },
-    "debitAuthorizations": { ... },
-    "dashboardBalances": { ... },
-    "loansData": { ... }
-  }
-}
-```
-
-### Save Mode
-Saves the data to a file on the server:
-
-```json
-{
-  "success": true,
-  "message": "Data saved successfully",
-  "filename": "scrape-2024-01-15T10-30-45-123Z.json"
-}
-```
-
-## Data Retrieved
-
-The scraper collects the following information:
-
-- **User Accounts**: Account numbers and nicknames
-- **Account Details**: Balance information and account details
-- **Debit Authorizations**: Standing orders and automatic payments
-- **Dashboard Balances**: Summary of all account balances
-- **Loans Data**: Information about loans and credit facilities
-
-## Docker Management
-
-### View Container Logs
-```bash
-docker logs my-scraper
-```
-
-### Stop the Container
-```bash
-docker stop my-scraper
-```
-
-### Remove the Container
-```bash
-docker rm my-scraper
-```
-
-### Restart the Container
-```bash
-docker restart my-scraper
-```
-
-## Development
-
-If you want to run the application locally without Docker:
-
-1. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-2. Install Google Chrome (required for Puppeteer)
-
-3. Start the server:
-   ```bash
-   node server.js
-   ```
-
-## Error Handling
-
-The API returns appropriate HTTP status codes:
-
-- **200**: Success
-- **400**: Bad Request (missing required fields)
-- **500**: Internal Server Error (scraping failed)
-
-Example error response:
-```json
-{
-  "success": false,
-  "error": "Missing required fields: id, password, code"
-}
-```
-
-## Security Notes
-
-⚠️ **Important Security Considerations:**
-* This application handles sensitive banking credentials
-* Always use HTTPS in production environments
-* Consider implementing authentication for the API endpoint
-* Regularly update dependencies for security patches
-* Never commit credentials to version control
-
-## Troubleshooting
-### Common Issues
-
-Container fails to start: Ensure port 8083 is not already in use
-Login failures: Verify your credentials are correct
-Timeout errors: The bank's website might be slow; the scraper has a 30-second timeout
-
-### Debug Mode
-The scraper runs in debug mode by default, providing detailed logs. Check container logs for troubleshooting:
-
-```bash
-docker logs my-scraper
-```
-
-## License
-This project is for educational and personal use only. Please ensure compliance with your bank's terms of service and applicable laws regarding automated access to banking systems.
-
-## Disclaimer
-This software is provided "as is" without warranty. Use at your own risk. The authors are not responsible for any misuse or damage caused by this software.
+This project supports generating PDF and Excel files for transactions and can return them as binary files or Base64.
 
 ---
 
-## Note
+## Features
 
-To run Puppeteer inside a Docker container you should install Google Chrome manually because, in contrast to the Chromium package offered by Debian, Chrome only offers the latest stable version.
+* Login with email and password, including handling OTP verification.
+* Fetch RavKav transactions between given dates.
+* Export transactions in multiple formats: JSON, PDF, Excel.
+* Automatic cleanup of temporary files and expired sessions.
+* Session management with expiry after 1 day.
 
-Install browser on **Dockerfile** :
+---
 
-```bash
-FROM node:18
+## Prerequisites
 
-# We don't need the standalone Chromium
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD true
+* Node.js 18+ installed
+* Docker installed (optional, recommended for isolated environments)
+* Valid RavKav Online credentials (email and password)
 
-# Install Google Chrome Stable and fonts
-# Note: this installs the necessary libs to make the browser work with Puppeteer.
-RUN apt-get update && apt-get install curl gnupg -y \
-  && curl --location --silent https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - \
-  && sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list' \
-  && apt-get update \
-  && apt-get install google-chrome-stable -y --no-install-recommends \
-  && rm -rf /var/lib/apt/lists/*
+---
 
-# Install your app here...
+## Endpoints
+
+### 1. Health Check
+
+**Method:** GET  
+**URL:** `/health`
+
+```json
+{
+  "status": "OK",
+  "timestamp": "2025-08-28T12:00:00.000Z"
+}
+```
+---
+
+### 2. Login
+
+**Method:** POST  
+**URL:** `/login`
+
+**Body Parameters:**
+- `email` (string) – required
+- `password` (string) – required
+- `verification_code` (number) – optional, for OTP
+
+**Response:**
+- `sessionId`: string, unique session ID
+- `loginResult`: object
+   - `state`: boolean, true if login successful
+   - `access_token`: string
+   - `refresh_token`: string
+   - `errors`: array of errors, empty if successful
+
+---
+
+### 3. Get Transactions
+
+**Method:** POST  
+**URL:** `/get-transactions`
+
+**Body Parameters:**
+- `sessionId` (string) – required, from login response
+- `startDate` (string, YYYY-MM-DD) – optional
+- `endDate` (string, YYYY-MM-DD) – optional
+- `returnFormat` (string) – optional, default: json
+   - Allowed values: json, pdfBinary, pdfBase64, excelBinary, excelBase64
+
+**Return Formats:**
+- `json`: Raw JSON of transactions
+- `pdfBinary`: PDF file download
+- `pdfBase64`: PDF returned as Base64 string
+- `excelBinary`: Excel file download
+- `excelBase64`: Excel returned as Base64 string
+
+**Excel Columns:**
+- Day (e.g., Sunday)
+- Date (dd-mm-yyyy)
+- Amount (transaction.payment.charged_amount / 100)
+
+**Example JSON Response:**
+- `status`: OK
+- `data`: array of transactions
+- `errors`: array of errors
+
+---
+
+## Session Management
+
+* Sessions are stored in memory (`Map`) and expire after 1 day.
+* Expired sessions are automatically removed.
+
+---
+
+## Temporary File Handling
+
+* PDF and Excel files are generated in temporary directories (`./data/tmp_...` or `./excel/tmp_...`).
+* Temporary directories are deleted **after the response is sent**.
+
+---
+
+## Example Usage
+
+**Login:**  
+POST `/login` with email and password.
+
+_If verification is required, You will receive a verification code in the email, and you will need to provide it in the request._
+
+**Get transactions as Excel:**  
+POST `/get-transactions` with `sessionId` and `returnFormat: excelBinary`
+
+
+**Get transactions as PDF Base64:**  
+POST `/get-transactions` with `sessionId` and `returnFormat: pdfBase64`
+
+Example post params:
+```json
+{
+  "sessionId": "sessionId_from_login_response",
+  "startDate": "2025-01-01",
+  "endDate": "2025-01-31",
+  "returnFormat": "excelBinary"
+}
 ```
 
-Additionally, If you are in an ARM-based CPU (Apple M1) like me, you should use the `--platform linux/amd64` argument when you build the Docker image.
+---
 
-Build Command : `docker build --platform linux/amd64 -t <image-name> .`
+## License
 
-**Note** : After updating your `Dockerfile`, make sure to update the puppeteer `script`, while launching the puppeteer browser add executable path with the path to chrome we recently installed on the machine.
-
-```javascript
-const browser = await launch({
-   headless: true,
-   defaultViewport: null,
-   executablePath: '/usr/bin/google-chrome',
-   args: ['--no-sandbox'],
-});
-```
+MIT License
