@@ -69,7 +69,7 @@ export class RavKav {
                 }
                 else if (error.response.data.detail) {
                     response.state = false;
-                    response.data = ['verification_required']
+                    response.data = []
                     response.errors = error.response.data.detail;
                 }
             });

@@ -148,6 +148,15 @@ app.post('/get-transactions', async (req, res) => {
 
     const RavKavIns = new RavKav();
     const transactionsResult = await RavKavIns.getTransactions(session, { startDate, endDate });
+    console.log('transactionsResult', transactionsResult)
+    if (!transactionsResult.state) {
+        return res.status(transactionsResult.status).json({
+            state: false,
+            status: transactionsResult.status,
+            data: transactionsResult.data,
+            errors: transactionsResult.errors,
+        })
+    }
 
     if (returnFormat == 'json') {
         return res.status(transactionsResult.status).json({
@@ -164,7 +173,7 @@ app.post('/get-transactions', async (req, res) => {
             errors: [],
         };
 
-        const transactions = transactionsResult.data.data.results;
+        const transactions = transactionsResult?.data?.data?.results??[];
         // Flip the transactions array (old to new)
         transactions.reverse();
 
