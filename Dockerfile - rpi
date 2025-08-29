@@ -32,7 +32,7 @@ COPY . .
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
 # Expose your app port
-EXPOSE 8083
+EXPOSE 3016
 
 # Start app
 CMD ["node", "./src/server.js"]

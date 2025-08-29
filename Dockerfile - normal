@@ -24,10 +24,10 @@ RUN npm install
 COPY . .
 
 # Expose port 8083
-EXPOSE 8083
+EXPOSE 3016
 
 # Set environment variable for port (optional fallback)
-ENV PORT=8083
+ENV PORT=3016
 
 # Start the app
 CMD ["node", "./src/server.js"]
