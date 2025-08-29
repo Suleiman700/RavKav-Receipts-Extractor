@@ -6,6 +6,7 @@ import {RavKav} from "./RavKav.js";
 import Browser from './Browser.js';
 import path from "path";
 import { PDFDocument } from 'pdf-lib';
+import ExcelJS from 'exceljs';
 import fs from "fs";
 import { promisify } from 'util';
 const rm = promisify(fs.rm); // For recursive delete
@@ -108,7 +109,7 @@ app.post('/login', async (req, res) => {
  *  Available params:
  *  - startDate: string - The start date for the transactions - E.g. 2025-01-01
  *  - endDate: string - The end date for the transactions - E.g. 2025-01-31
- *  - returnFormat: string - The format of the response - E.g. json, pdfBinary, pdfBase64, excel
+ *  - returnFormat: string - The format of the response - E.g. json, pdfBinary, pdfBase64, excelBase64, excelBinary
  */
 app.post('/get-transactions', async (req, res) => {
     if (DEBUG) console.log('API: get-transactions', req.body);
@@ -138,7 +139,7 @@ app.post('/get-transactions', async (req, res) => {
         return res.status(400).json({ errors: ['Start date must be before end date'] });
     }
 
-    const allowedReturnFormats = ['json', 'pdfBinary', 'pdfBase64', 'excel'];
+    const allowedReturnFormats = ['json', 'pdfBinary', 'pdfBase64', 'excelBase64', 'excelBinary'];
     if (returnFormat && !allowedReturnFormats.includes(returnFormat)) {
         return res.status(400).json({
             errors: [`Invalid return format, Please use: ${allowedReturnFormats.join(', ')}`]
@@ -164,8 +165,11 @@ app.post('/get-transactions', async (req, res) => {
         };
 
         const transactions = transactionsResult.data.data.results;
+        // Flip the transactions array (old to new)
+        transactions.reverse();
+
         const tmp = `tmp_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
-        const pdfPath = path.join(`./pdfs/${tmp}`);
+        const pdfPath = path.join(`./data/${tmp}`);
 
         // Make sure directory exists
         fs.mkdirSync(pdfPath, { recursive: true });
@@ -233,81 +237,69 @@ app.post('/get-transactions', async (req, res) => {
             });
         }
     }
-    // else if (returnFormat == 'pdf') {
-    //     const result = {
-    //         state: true,
-    //         data: {
-    //             pdf: null, // Store the PDF
-    //         },
-    //         errors: [],
-    //     };
-    //
-    //     const transactions = transactionsResult.data.data.results;
-    //     const tmp = `tmp_${Date.now()}`
-    //     const pdfStoragePath = path.join(`./pdfs/${tmp}`); // create a temporary directory for the PDFs
-    //
-    //     for (let i = 0; i < transactions.length; i++) {
-    //         const transaction = transactions[i];
-    //
-    //         const browser = new Browser({ debug: true, dataDir: pdfStoragePath });
-    //         try {
-    //             const url = transaction.purchase_approval_link;
-    //             await browser.goto(url);
-    //             let date = transaction.period_description; // E.g. 4/8/2025
-    //             date = date.replace(/\//g, '-'); // Safe date: "4-8-2025"
-    //             const filename = `${i+1} - ${date}.pdf`;
-    //             await browser.savePDF(filename);
-    //         }
-    //         catch (err) {
-    //             console.error('Error:', err);
-    //             result.state = false;
-    //             result.errors.push(err);
-    //         }
-    //         finally {
-    //             await browser.close();
-    //             result.state = true;
-    //         }
-    //     }
-    //
-    //     if (!result.state) {
-    //         return res.status(500).json({
-    //             status: 'ERROR',
-    //             data: null,
-    //             errors: result.errors,
-    //         });
-    //     }
-    //
-    //     // Combine all PDFs into one
-    //     {
-    //         const pdfFiles = fs.readdirSync(pdfStoragePath)
-    //             .filter(f => f.endsWith('.pdf'))
-    //             .map(f => path.join(pdfStoragePath, f));
-    //
-    //         const mergedPdf = await PDFDocument.create();
-    //
-    //         for (const file of pdfFiles) {
-    //             const pdfBytes = fs.readFileSync(file);
-    //             const pdf = await PDFDocument.load(pdfBytes);
-    //             const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
-    //             copiedPages.forEach(page => mergedPdf.addPage(page));
-    //         }
-    //
-    //         // Save merged PDF
-    //         const mergedPdfPath = path.join(pdfStoragePath, `merged_${Date.now()}.pdf`);
-    //         const mergedPdfBytes = await mergedPdf.save();
-    //         fs.writeFileSync(mergedPdfPath, mergedPdfBytes);
-    //
-    //         console.log('Merged PDF saved:', mergedPdfPath);
-    //
-    //         // Return merged PDF path in response
-    //         return res.status(200).json({
-    //             status: 'OK',
-    //             data: { pdf: mergedPdfPath },
-    //             errors: []
-    //         });
-    //
-    //     }
-    // }
+    else if (returnFormat === 'excelBinary' || returnFormat === 'excelBase64') {
+        const transactions = transactionsResult.data.data.results;
+        // Flip the transactions array (old to new)
+        transactions.reverse();
+
+        // Create tmp folder
+        const tmpDir = `tmp_${Date.now()}_${Math.floor(Math.random()*10000)}`;
+        const excelPath = path.join('./excel', tmpDir);
+        fs.mkdirSync(excelPath, { recursive: true });
+
+        const tmpFile = path.join(excelPath, 'transactions.xlsx');
+
+        try {
+            // Create workbook
+            const workbook = new ExcelJS.Workbook();
+            const sheet = workbook.addWorksheet('Transactions');
+            sheet.addRow(['Day', 'Date', 'Amount']);
+
+            for (const transaction of transactions) {
+                const dateParts = transaction.period_description.split('/');
+                const day = new Date(`${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`)
+                    .toLocaleString('en-US', { weekday: 'long' });
+                const dateFormatted = `${dateParts[0].padStart(2,'0')}-${dateParts[1].padStart(2,'0')}-${dateParts[2]}`;
+                const amount = (transaction.payment.charged_amount / 100).toFixed(2);
+                sheet.addRow([day, dateFormatted, amount]);
+            }
+
+            // Save workbook fully before reading
+            await workbook.xlsx.writeFile(tmpFile);
+
+            // Read file buffer after it's fully saved
+            const fileBuffer = fs.readFileSync(tmpFile);
+
+            if (returnFormat === 'excelBinary') {
+                res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+                res.setHeader('Content-Disposition', 'attachment; filename="transactions.xlsx"');
+                res.send(fileBuffer);
+            }
+            else if (returnFormat === 'excelBase64') {
+                res.status(200).json({
+                    status: 'OK',
+                    data: { excelBase64: fileBuffer.toString('base64') },
+                    errors: []
+                });
+            }
+
+            // Delete tmp folder AFTER response is sent
+            setTimeout(async () => {
+                try {
+                    await rm(excelPath, { recursive: true, force: true });
+                    console.log(`[DEBUG] Temporary folder deleted: ${excelPath}`);
+                }
+                catch (err) {
+                    console.error('[ERROR] Failed to delete tmp excel folder:', err);
+                }
+            }, 500); // small delay to make sure response is sent
+
+        }
+        catch (err) {
+            console.error('[ERROR] Excel generation failed:', err);
+            res.status(500).json({ status: 'ERROR', errors: [err.message] });
+        }
+    }
 });
 
 // Health check endpoint
