@@ -1,5 +1,5 @@
 {
-  "name": "mercantile-bank-scraper",
+  "name": "ravkav-receipts-extractor",
   "version": "1.0.0",
   "main": "src/server.js",
   "scripts": {
@@ -9,15 +9,15 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Suleiman700/Mercantile-Bank-Scraper.git"
+    "url": "git+https://github.com/Suleiman700/RavKav-Receipts-Extractor.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/Suleiman700/Mercantile-Bank-Scraper/issues"
+    "url": "https://github.com/Suleiman700/RavKav-Receipts-Extractor/issues"
   },
-  "homepage": "https://github.com/Suleiman700/Mercantile-Bank-Scraper#readme",
+  "homepage": "https://github.com/Suleiman700/RavKav-Receipts-Extractor#readme",
   "description": "",
   "devDependencies": {
     "nodemon": "^3.1.0",
