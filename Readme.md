@@ -26,6 +26,14 @@ This project supports generating PDF and Excel files for transactions and can re
 
 ---
 
+## Installation
+
+1. Rename `Dockerfile - normal` or `Dockerfile - rpi` to `Dockerfile` (based on your needs)
+2. run `docker build -t ravkav-receipts-extractor .`
+3. run `docker run -d -p 3016:3000 --name ravkav-receipts-extractor ravkav-receipts-extractor`
+
+---
+
 ## Endpoints
 
 ### 1. Health Check
