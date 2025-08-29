@@ -127,9 +127,9 @@ export class RavKav {
         return response;
     }
 
-    async getTransactions(session, options = {startDate: null, endDate: null}) {
+    async getTransactions(session, options = { startDate: null, endDate: null }) {
         let url = 'https://ravkavonline.co.il/api/transaction/?billing_status=charged&page_size=1000';
-        
+
         // Add date parameters if provided
         if (options.startDate && options.endDate) {
             const startDateStr = options.startDate;
@@ -146,14 +146,7 @@ export class RavKav {
                 'accept-language': 'he',
                 'authorization': `Bearer ${session.loginResult.data.access_token}`,
                 'content-type': 'application/json',
-                'priority': 'u=1, i',
                 'referer': 'https://ravkavonline.co.il/he/store/account/transaction-history?billingStatus=charged',
-                'sec-ch-ua': '"Not;A=Brand";v="99", "Google Chrome";v="139", "Chromium";v="139"',
-                'sec-ch-ua-mobile': '?0',
-                'sec-ch-ua-platform': '"Windows"',
-                'sec-fetch-dest': 'empty',
-                'sec-fetch-mode': 'cors',
-                'sec-fetch-site': 'same-origin',
                 'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36',
                 'x-ravkav-version': 'sw=ravkav-web id=null version=null d=87ad43702ce240c8b19cdd79ed677489'
             }
@@ -161,29 +154,27 @@ export class RavKav {
 
         const response = {
             state: false,
+            status: null,
             data: [],
             errors: []
+        };
+
+        try {
+            const res = await axios.request(config);
+            response.state = true;
+            response.status = res.status;
+            response.data = res.data;
+        } catch (error) {
+            response.state = false;
+            response.status = error.response?.status || 500;
+
+            if (error.response?.data?.detail) {
+                response.errors = [error.response.data.detail];
+            } else {
+                response.errors = [error.message || "Unknown error"];
+            }
         }
-
-        await axios.request(config)
-            .then((res) => {
-                response.state = true;
-                response.data = res.data;
-                response.errors = [];
-            })
-            .catch((error) => {
-                response.state = false;
-                response.errors.push(error);
-
-                if (error.response.data.detail) {
-                    response.state = false;
-                    response.data = []
-                    response.errors = [error.response.data.detail];
-                }
-
-            });
 
         return response;
     }
-
 }
