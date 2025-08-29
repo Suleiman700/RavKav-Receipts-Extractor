@@ -35,8 +35,8 @@ ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 EXPOSE 8083
 
 # Start app
-CMD ["node", "server.js"]
+CMD ["node", "./src/server.js"]
 
 
-# docker build -t mercantile-bank-scraper .
-# docker run -d -p 8083:8083 --name mercantile-bank-scraper mercantile-bank-scraper
+# docker build -t ravkav-receipts-extractor .
+# docker run -d -p 3016:3000 --name ravkav-receipts-extractor ravkav-receipts-extractor

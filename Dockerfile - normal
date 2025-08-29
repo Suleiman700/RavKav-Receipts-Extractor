@@ -30,7 +30,7 @@ EXPOSE 8083
 ENV PORT=8083
 
 # Start the app
-CMD ["node", "server.js"]
+CMD ["node", "./src/server.js"]
 
-# docker build -t mercantile-bank-scraper .
-# docker run -d -p 8083:8083 --name mercantile-bank-scraper mercantile-bank-scraper
+# docker build -t ravkav-receipts-extractor .
+# docker run -d -p 3016:3000 --name ravkav-receipts-extractor ravkav-receipts-extractor
